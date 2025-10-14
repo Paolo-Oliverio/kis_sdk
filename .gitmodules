@@ -1,0 +1,3 @@
+[submodule "kis_build_system"]
+	path = kis_build_system
+	url = https://github.com/Paolo-Oliverio/kis_build_system.git
