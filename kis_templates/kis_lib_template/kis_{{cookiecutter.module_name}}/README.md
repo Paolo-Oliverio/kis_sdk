@@ -1,0 +1,1 @@
+# Kis sdk module kis_{{cookiecutter.module_name}}

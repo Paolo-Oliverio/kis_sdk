@@ -1,0 +1,11 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "kickstart a new kis_package library",
+            "type": "shell",
+            "command": "cookiecutter ${workspaceFolder}/kis_templates/kis_lib_template -o ${workspaceFolder}/kis_packages",
+            "problemMatcher": []
+        }
+    ]
+}

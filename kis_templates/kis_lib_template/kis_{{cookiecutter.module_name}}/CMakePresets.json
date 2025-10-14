@@ -1,0 +1,44 @@
+{
+  "version": 4,
+  "configurePresets": [
+    {
+      "name": "base",
+      "displayName": "Base Configuration",
+      "description": "Base configuration with common settings",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "displayName": "Debug Build",
+      "configurePreset": "base",
+      "configuration" : "Debug"
+    },
+    {
+      "name": "release",
+      "displayName": "Release Build",
+      "configurePreset": "base",
+      "configuration" : "Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "debug",
+      "displayName": "Test (Debug)",
+      "configurePreset": "base",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "release",
+      "displayName": "Test (Release)",
+      "configurePreset": "base",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}
