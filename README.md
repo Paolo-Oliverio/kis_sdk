@@ -11,7 +11,7 @@ This SDK focuses on making low-code project setups in CMake, so users don't have
 ### Key Features
 
 *   **Unified Build System**: A central set of CMake scripts provides consistent functions for packaging, installation, and dependency management.
-*   **Standalone Package Builds**: Every package within the SDK can be cloned and built on its own, automatically fetching necessary dependencies.
+*   **Standalone Package Builds**: Every package within the SDK can be cloned and built on its own (even without kis_sdk), automatically fetching only necessary dependencies (e.g. kis_build_system).
 *   **Third-Party Dependency Management**: Uses CMake's `FetchContent` for robust, version-controlled dependency handling with a persistent cache.
 *   **First-Party Package Resolution**: Automatically discovers and clones missing internal SDK packages from trusted Git repositories.
 *   **Consistent Tooling**: Standardized functions for adding tests, samples, and benchmarks across all packages.
