@@ -1,6 +1,6 @@
 # KIS SDK (Keep It Simple SDK)
 
-[![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE.txt)
 
 The KIS SDK is a collection of C++ libraries and a powerful, modern CMake-based build system designed for creating scalable, cross-platform applications. It emphasizes modularity, ease of use, and a consistent development experience.
 
