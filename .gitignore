@@ -1,5 +1,6 @@
-/kis_packages
+kis_packages/*
+!kis_packages/.gitkeep
 /build
-/ref
 /tools
+/ref
 /_install
