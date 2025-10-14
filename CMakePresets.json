@@ -1,0 +1,45 @@
+{
+  "version": 4,
+  "configurePresets": [
+    {
+      "name": "sdk-base",
+      "displayName": "kis_sdk Base",
+      "description": "Base configuration with common settings",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "displayName": "Debug Build",
+      "configurePreset": "sdk-base",
+      "configuration" : "Debug"
+    },
+    {
+      "name": "release",
+      "displayName": "Release Build",
+      "configurePreset": "sdk-base",
+      "configuration" : "Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "debugTest",
+      "displayName": "Test (Debug)",
+      "configurePreset": "sdk-base",
+      "configuration": "Debug",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "releaseTest",
+      "displayName": "Test (Release)",
+      "configurePreset": "sdk-base",
+      "configuration": "Release",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}
