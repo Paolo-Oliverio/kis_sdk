@@ -1,0 +1,282 @@
+# KIS_SDKVariants.cmake
+#
+# This file is installed with the SDK and provides variant selection logic
+# for consumer projects.
+#
+# CONSUMER USAGE:
+#
+#   # Set default variant for all packages
+#   set(KIS_SDK_DEFAULT_VARIANT "release")
+#   
+#   # Override specific packages
+#   set(KIS_SDK_VARIANT_kis_task_system "profiling")
+#   set(KIS_SDK_VARIANT_kis_allocator "profiling")
+#   
+#   find_package(KIS_SDK REQUIRED)
+#
+# The SDK will automatically select the appropriate variant for each package
+# and validate ABI compatibility.
+
+@PACKAGE_INIT@
+
+# =============================================================================
+# ABI COMPATIBILITY DEFINITIONS (copied from sdk_variants.cmake)
+# =============================================================================
+
+set(_KIS_ABI_GROUP_RELEASE "release;profiling")
+set(_KIS_ABI_GROUP_DEBUG "debug;asan")
+
+set(_KIS_CONFIG_ABI_GROUP_release "RELEASE")
+set(_KIS_CONFIG_ABI_GROUP_profiling "RELEASE")
+set(_KIS_CONFIG_ABI_GROUP_debug "DEBUG")
+set(_KIS_CONFIG_ABI_GROUP_asan "DEBUG")
+set(_KIS_CONFIG_ABI_GROUP_ "RELEASE")  # Default
+
+# =============================================================================
+# VARIANT SELECTION FUNCTION
+# =============================================================================
+
+#
+# kis_sdk_select_variant
+#
+# Determines which variant to use for a given package based on:
+# 1. Package-specific override (KIS_SDK_VARIANT_<package_name>)
+# 2. Global default (KIS_SDK_DEFAULT_VARIANT)
+# 3. Fallback to "release"
+#
+# Args:
+#   package_name: Name of the package (e.g., "kis_core")
+#   out_variant: Output variable to store the selected variant name
+#
+function(kis_sdk_select_variant package_name out_variant)
+    # 1. Check for package-specific override
+    if(DEFINED KIS_SDK_VARIANT_${package_name})
+        set(selected "${KIS_SDK_VARIANT_${package_name}}")
+    # 2. Use default variant
+    elseif(DEFINED KIS_SDK_DEFAULT_VARIANT)
+        set(selected "${KIS_SDK_DEFAULT_VARIANT}")
+    else()
+        # 3. Fallback to 'release'
+        set(selected "release")
+    endif()
+    
+    # Normalize empty string to "release"
+    if(NOT selected OR selected STREQUAL "")
+        set(selected "release")
+    endif()
+    
+    set(${out_variant} "${selected}" PARENT_SCOPE)
+endfunction()
+
+#
+# kis_sdk_find_compatible_variant
+#
+# Finds a compatible fallback variant when the requested variant isn't available.
+# Uses ABI group compatibility and smart fallback logic.
+#
+# Args:
+#   requested_variant: The variant that was requested
+#   available_variants: List of variants actually available for this package
+#   out_variant: Output variable (set to fallback variant or empty if none found)
+#
+function(kis_sdk_find_compatible_variant requested_variant available_variants out_variant)
+    # Get the ABI group of the requested variant
+    _kis_get_variant_abi_group("${requested_variant}" requested_abi_group)
+    
+    if(requested_abi_group STREQUAL "UNKNOWN")
+        set(${out_variant} "" PARENT_SCOPE)
+        return()
+    endif()
+    
+    # Try fallback priorities for this ABI group
+    _kis_get_fallback_variant("${requested_abi_group}" "${available_variants}" fallback)
+    
+    set(${out_variant} "${fallback}" PARENT_SCOPE)
+endfunction()
+
+# =============================================================================
+# ABI COMPATIBILITY VALIDATION
+# =============================================================================
+
+#
+# _kis_get_variant_abi_group (internal helper)
+#
+function(_kis_get_variant_abi_group variant_name out_var)
+    # Normalize empty to "release"
+    if(NOT variant_name OR variant_name STREQUAL "")
+        set(variant_name "release")
+    endif()
+    
+    set(abi_group_var "_KIS_CONFIG_ABI_GROUP_${variant_name}")
+    if(DEFINED ${abi_group_var})
+        set(${out_var} "${${abi_group_var}}" PARENT_SCOPE)
+    else()
+        set(${out_var} "UNKNOWN" PARENT_SCOPE)
+    endif()
+endfunction()
+
+#
+# _kis_get_fallback_variant (internal helper)
+#
+# Finds a compatible fallback variant from an ABI group.
+#
+function(_kis_get_fallback_variant abi_group available_variants out_var)
+    # Get all variants in this ABI group
+    set(group_var "_KIS_ABI_GROUP_${abi_group}")
+    if(NOT DEFINED ${group_var})
+        set(${out_var} "" PARENT_SCOPE)
+        return()
+    endif()
+    
+    set(group_variants "${${group_var}}")
+    
+    # Priority 1: "release" for RELEASE group
+    if(abi_group STREQUAL "RELEASE" AND "release" IN_LIST available_variants)
+        set(${out_var} "release" PARENT_SCOPE)
+        return()
+    endif()
+    
+    # Priority 2: "debug" for DEBUG group  
+    if(abi_group STREQUAL "DEBUG" AND "debug" IN_LIST available_variants)
+        set(${out_var} "debug" PARENT_SCOPE)
+        return()
+    endif()
+    
+    # Priority 3: First available variant from the ABI group
+    foreach(variant ${group_variants})
+        if(variant IN_LIST available_variants)
+            set(${out_var} "${variant}" PARENT_SCOPE)
+            return()
+        endif()
+    endforeach()
+    
+    # No fallback found
+    set(${out_var} "" PARENT_SCOPE)
+endfunction()
+
+#
+# kis_sdk_validate_variant_compatibility
+#
+# Call this after all packages are found to ensure all selected variants
+# are ABI-compatible.
+#
+function(kis_sdk_validate_variant_compatibility)
+    # Collect all package names and their selected variants
+    get_property(all_packages GLOBAL PROPERTY KIS_SDK_LOADED_PACKAGES)
+    
+    if(NOT all_packages)
+        # No packages loaded yet, nothing to validate
+        return()
+    endif()
+    
+    # Determine the reference ABI group from the first package
+    list(GET all_packages 0 first_package)
+    get_property(first_variant GLOBAL PROPERTY KIS_SDK_PACKAGE_VARIANT_${first_package})
+    _kis_get_variant_abi_group("${first_variant}" reference_abi_group)
+    
+    # Check all other packages
+    set(incompatible_packages "")
+    foreach(package ${all_packages})
+        get_property(package_variant GLOBAL PROPERTY KIS_SDK_PACKAGE_VARIANT_${package})
+        _kis_get_variant_abi_group("${package_variant}" package_abi_group)
+        
+        if(NOT package_abi_group STREQUAL reference_abi_group)
+            list(APPEND incompatible_packages "${package}:${package_variant}:${package_abi_group}")
+        endif()
+    endforeach()
+    
+    if(incompatible_packages)
+        message(FATAL_ERROR 
+            "ABI COMPATIBILITY ERROR:\n"
+            "Cannot mix packages from different ABI groups!\n"
+            "\n"
+            "Reference ABI Group: ${reference_abi_group} (from ${first_package}:${first_variant})\n"
+            "\n"
+            "Incompatible packages:\n"
+            "  ${incompatible_packages}\n"
+            "\n"
+            "ABI Groups:\n"
+            "  RELEASE: ${_KIS_ABI_GROUP_RELEASE}\n"
+            "  DEBUG:   ${_KIS_ABI_GROUP_DEBUG}\n"
+            "\n"
+            "To fix this, ensure all packages use variants from the same ABI group.\n"
+            "Example:\n"
+            "  set(KIS_SDK_DEFAULT_VARIANT \"release\")\n"
+            "  set(KIS_SDK_VARIANT_kis_task_system \"profiling\")  # OK - both in RELEASE group\n"
+        )
+    else()
+        message(STATUS "✓ All packages use compatible variants (ABI group: ${reference_abi_group})")
+    endif()
+endfunction()
+
+# =============================================================================
+# PACKAGE TRACKING
+# =============================================================================
+
+#
+# kis_sdk_register_package_variant
+#
+# Internal function called by package Config files to register which variant
+# was selected. This is used for validation.
+#
+function(kis_sdk_register_package_variant package_name variant_name)
+    set_property(GLOBAL APPEND PROPERTY KIS_SDK_LOADED_PACKAGES "${package_name}")
+    set_property(GLOBAL PROPERTY KIS_SDK_PACKAGE_VARIANT_${package_name} "${variant_name}")
+endfunction()
+
+# =============================================================================
+# CONSUMER HELPER FUNCTIONS
+# =============================================================================
+
+#
+# kis_sdk_print_variant_configuration
+#
+# Prints a summary of all loaded packages and their variants.
+# Useful for debugging consumer projects.
+#
+function(kis_sdk_print_variant_configuration)
+    get_property(all_packages GLOBAL PROPERTY KIS_SDK_LOADED_PACKAGES)
+    
+    if(NOT all_packages)
+        message(STATUS "No KIS SDK packages loaded yet.")
+        return()
+    endif()
+    
+    message(STATUS "")
+    message(STATUS "=== KIS SDK Variant Configuration ===")
+    if(DEFINED KIS_SDK_DEFAULT_VARIANT)
+        message(STATUS "Default Variant: ${KIS_SDK_DEFAULT_VARIANT}")
+    else()
+        message(STATUS "Default Variant: release (implicit)")
+    endif()
+    message(STATUS "")
+    message(STATUS "Loaded Packages:")
+    
+    foreach(package ${all_packages})
+        get_property(variant GLOBAL PROPERTY KIS_SDK_PACKAGE_VARIANT_${package})
+        _kis_get_variant_abi_group("${variant}" abi_group)
+        message(STATUS "  ${package}: ${variant} [${abi_group}]")
+    endforeach()
+    
+    message(STATUS "======================================")
+    message(STATUS "")
+endfunction()
+
+#
+# kis_sdk_set_variant_overrides
+#
+# Convenience function to set multiple package variant overrides at once.
+#
+# Usage:
+#   kis_sdk_set_variant_overrides(
+#       profiling  # variant to use
+#       kis_task_system
+#       kis_allocator
+#       kis_profiling
+#   )
+#
+function(kis_sdk_set_variant_overrides variant_name)
+    foreach(package ${ARGN})
+        set(KIS_SDK_VARIANT_${package} "${variant_name}" PARENT_SCOPE)
+    endforeach()
+endfunction()

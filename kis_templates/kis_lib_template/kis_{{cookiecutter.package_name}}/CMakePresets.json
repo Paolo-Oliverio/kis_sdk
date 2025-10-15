@@ -32,12 +32,14 @@
       "name": "debug",
       "displayName": "Test (Debug)",
       "configurePreset": "base",
+      "configuration": "Debug",
       "output": { "outputOnFailure": true }
     },
     {
       "name": "release",
       "displayName": "Test (Release)",
       "configurePreset": "base",
+      "configuration": "Release",
       "output": { "outputOnFailure": true }
     }
   ]

@@ -1,7 +1,7 @@
 #pragma once
 
 namespace kis{
-namespace {{cookiecutter.module_name}}{
+namespace {{cookiecutter.package_name}}{
   void hello();
 }
 }

@@ -8,12 +8,12 @@ if(KIS_BUILD_TESTS)
         GIT_TAG        ${KIS_THIRDPARTY_DOCTEST_VERSION}
     )
     
-    kis_add_test(kis_{{cookiecutter.module_name}}_tests
+    kis_add_test(${PACKAGE_NAME}_tests
         SOURCES
-            tests/{{cookiecutter.module_name}}.test.cpp
+            tests/{{cookiecutter.package_name}}.test.cpp
         LINK_LIBRARIES
             # Link to our main library target
-            kis_{{cookiecutter.module_name}}
+            kis::${PACKAGE_NAME}
             # Crucially, link to the doctest target. This provides the
             # include paths and any other usage requirements.
             doctest::doctest

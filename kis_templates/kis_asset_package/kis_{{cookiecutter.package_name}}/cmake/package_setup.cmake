@@ -21,9 +21,14 @@ if(NOT BUILDING_WITH_SUPERBUILD)
             kis_build_system
             # IMPORTANT: Replace with the actual URL of your build system repo
             GIT_REPOSITORY https://github.com/Paolo-Oliverio/kis_build_system.git
-            GIT_TAG        v0.1.0 # Or main, develop, etc.
+            #GIT_TAG        v0.1.0 # Or main, develop, etc.
         )
         FetchContent_MakeAvailable(kis_build_system)
+        # After fetching the content, we must explicitly include the master
+        # module file. This is what makes all the kis_* and apply_* functions
+        # available to the rest of the build script. The find_package() route
+        # does this automatically via its config file.
+        include(${kis_build_system_SOURCE_DIR}/modules/kis_build_system.cmake)
     else()
         message(STATUS "Found and using pre-installed kis_build_system.")
     endif()

@@ -5,40 +5,102 @@
       "name": "sdk-base",
       "displayName": "kis_sdk Base",
       "description": "Base configuration with common settings",
-      "generator": "Ninja Multi-Config",
+      "hidden": true,
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release (Default)",
+      "description": "Optimized release build with tools and samples",
+      "inherits": "sdk-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "KIS_BUILD_TOOLS": "ON",
+        "KIS_BUILD_SAMPLES": "ON"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug Build",
+      "description": "Debug build with symbols, tools, editor, and tests",
+      "inherits": "sdk-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "KIS_CONFIG_SUFFIX": "debug",
+        "KIS_BUILD_TOOLS": "ON",
+        "KIS_BUILD_EDITOR": "ON",
+        "KIS_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "profiling",
+      "displayName": "Profiling Build",
+      "description": "Release with profiling instrumentation",
+      "inherits": "sdk-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "KIS_CONFIG_SUFFIX": "profiling",
+        "KIS_ENABLE_PROFILING": "ON",
+        "KIS_BUILD_TOOLS": "ON"
+      }
+    },
+    {
+      "name": "asan",
+      "displayName": "AddressSanitizer",
+      "description": "Debug with AddressSanitizer for memory error detection",
+      "inherits": "debug",
+      "cacheVariables": {
+        "KIS_CONFIG_SUFFIX": "asan",
+        "CMAKE_CXX_FLAGS": "-fsanitize=address -fno-omit-frame-pointer",
+        "CMAKE_C_FLAGS": "-fsanitize=address -fno-omit-frame-pointer"
       }
     }
   ],
   "buildPresets": [
     {
+      "name": "release",
+      "displayName": "Release Build",
+      "configurePreset": "release",
+      "configuration" : "Release"
+    },
+    {
       "name": "debug",
       "displayName": "Debug Build",
-      "configurePreset": "sdk-base",
+      "configurePreset": "debug",
       "configuration" : "Debug"
     },
     {
-      "name": "release",
-      "displayName": "Release Build",
-      "configurePreset": "sdk-base",
+      "name": "profiling",
+      "displayName": "Profiling Build",
+      "configurePreset": "profiling",
       "configuration" : "Release"
+    }
+    ,
+    {
+      "name": "install",
+      "displayName": "Install",
+      "configurePreset": "release",
+      "configuration": "Release",
+      "targets": [ "install" ]
     }
   ],
   "testPresets": [
     {
-      "name": "debugTest",
-      "displayName": "Test (Debug)",
-      "configurePreset": "sdk-base",
-      "configuration": "Debug",
+      "name": "releaseTest",
+      "displayName": "Test (Release)",
+      "configurePreset": "release",
+      "configuration": "Release",
       "output": { "outputOnFailure": true }
     },
     {
-      "name": "releaseTest",
-      "displayName": "Test (Release)",
-      "configurePreset": "sdk-base",
-      "configuration": "Release",
+      "name": "debugTest",
+      "displayName": "Test (Debug)",
+      "configurePreset": "debug",
+      "configuration": "Debug",
       "output": { "outputOnFailure": true }
     }
   ]

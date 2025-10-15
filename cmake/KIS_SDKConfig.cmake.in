@@ -1,23 +1,94 @@
 # cmake/KIS_SDKConfig.cmake.in
-
 @PACKAGE_INIT@
 
-# This file is the entry point for any project using our SDK.
-# Its only job is to add the unified SDK installation root to the user's
-# CMAKE_PREFIX_PATH, so that find_package() can find all the SDK's packages.
+# This config file makes the KIS SDK available to consumer projects.
+# It defines an INTERFACE target `KIS_SDK::SDK` that provides the correct,
+# platform-aware include paths.
 
-get_filename_component(MY_INSTALL_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../" REALPATH)
+# --- 1. Add our own CMake package directory to the search path ---
+# This allows `find_package(kis_core)` etc. to work immediately.
+get_filename_component(KIS_SDK_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}" ABSOLUTE)
+list(PREPEND CMAKE_PREFIX_PATH "${KIS_SDK_CMAKE_DIR}/..")
 
-# Prepend our path to CMAKE_PREFIX_PATH so it is searched first.
-# Use a guard to prevent adding it multiple times.
-if(NOT KIS_SDK_CONFIG_INCLUDED)
-    set(KIS_SDK_CONFIG_INCLUDED TRUE)
+# --- 2. Load the variant selection system ---
+# This must be loaded before any packages are found so that the variant
+# selection logic is available.
+include("${CMAKE_CURRENT_LIST_DIR}/KIS_SDKVariants.cmake")
 
-    list(PREPEND CMAKE_PREFIX_PATH "${MY_INSTALL_ROOT}")
-    
-    message(STATUS "Found KIS_SDK: Adding '${MY_INSTALL_ROOT}' to CMAKE_PREFIX_PATH")
+# --- 3. Determine Consumer's Platform and Architecture ---
+# We must re-run this logic to match the consumer's environment, not the
+# environment where the SDK was built.
+
+if(WIN32)
+    set(_consumer_platform "windows")
+elseif(UNIX AND NOT APPLE AND NOT ANDROID)
+    set(_consumer_platform "linux")
+elseif(ANDROID)
+    set(_consumer_platform "android")
+else()
+    message(FATAL_ERROR "KIS_SDK: Could not determine consumer platform.")
 endif()
 
-# We can find individual packages like this:
-# find_package(core_utils REQUIRED)
-# find_package(rendering_engine REQUIRED)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64)$")
+    set(_consumer_arch "x64")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
+    set(_consumer_arch "arm64")
+else()
+    set(_consumer_arch "${CMAKE_SYSTEM_PROCESSOR}")
+endif()
+
+# --- 4. Re-create the Platform Tag Hierarchy ---
+set(_consumer_tags "")
+if(_consumer_platform STREQUAL "windows")
+    list(APPEND _consumer_tags "desktop")
+elseif(_consumer_platform STREQUAL "linux")
+    list(APPEND _consumer_tags "posix" "unix" "desktop")
+elseif(_consumer_platform STREQUAL "android")
+    list(APPEND _consumer_tags "unix" "mobile")
+endif()
+list(PREPEND _consumer_tags ${_consumer_platform})
+list(REVERSE _consumer_tags) # general -> specific
+
+# --- 5. Construct Ordered, Platform-Aware Search Paths ---
+set(KIS_SDK_INCLUDE_DIRS "${PACKAGE_PREFIX_DIR}/include")
+set(KIS_SDK_ASSET_DIRS "${PACKAGE_PREFIX_DIR}/assets")
+
+# We loop from most specific to least specific to prepend paths.
+list(REVERSE _consumer_tags)
+foreach(tag ${_consumer_tags})
+    # --- FIX: Point to the new, flatter platform include directory ---
+    set(platform_header_path "${PACKAGE_PREFIX_DIR}/platform_include/${tag}")
+    if(IS_DIRECTORY "${platform_header_path}")
+        list(PREPEND KIS_SDK_INCLUDE_DIRS "${platform_header_path}")
+    endif()
+
+    # A VFS can now mount this path and find assets under <package_name>/...
+    set(platform_asset_path "${PACKAGE_PREFIX_DIR}/platform_assets/${tag}")
+    if(IS_DIRECTORY "${platform_asset_path}")
+        list(PREPEND KIS_SDK_ASSET_DIRS "${platform_asset_path}")
+    endif()
+endforeach()
+
+# Provide an interface target for the whole SDK if needed.
+if(NOT TARGET kis::KIS_SDK)
+    add_library(kis::KIS_SDK INTERFACE IMPORTED)
+    set_target_properties(kis::KIS_SDK PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${KIS_SDK_INCLUDE_DIRS}"
+    )
+    # Store asset paths for retrieval by a helper function.
+    set_property(TARGET kis::KIS_SDK PROPERTY KIS_ASSET_SEARCH_PATHS "${KIS_SDK_ASSET_DIRS}")
+endif()
+
+function(kis_sdk_get_asset_paths OUT_VAR)
+    get_target_property(${OUT_VAR} kis::KIS_SDK KIS_ASSET_SEARCH_PATHS)
+endfunction()
+
+message(STATUS "Found KIS_SDK for ${_consumer_platform}-${_consumer_arch}.")
+message(STATUS "  --> Include search order: ${KIS_SDK_INCLUDE_DIRS}")
+message(STATUS "  --> Asset search order:   ${KIS_SDK_ASSET_DIRS}")
+
+# Print variant configuration if user has set any overrides
+if(DEFINED KIS_SDK_DEFAULT_VARIANT OR DEFINED CMAKE_FIND_PACKAGE_NAME)
+    # Defer validation until after all packages are found
+    # Users should call kis_sdk_validate_variant_compatibility() after finding all packages
+endif()

@@ -2,13 +2,30 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Build and Test (Debug)",
+            "type": "shell",
+            "command": "cmake --build --preset debug && ctest --preset debugTest",
+            "problemMatcher": [],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Build and Test (Release)",
+            "type": "shell",
+            "command": "cmake --build --preset release && ctest --preset releaseTest",
+            "problemMatcher": [],
+            "group": "test"
+        },
+        {
             "label": "kickstart a new kis_package library",
             "type": "shell",
             "command": "cookiecutter",
             "args": [
-                "${workspaceFolder}/kis_templates/kis_lib_template", // Path to your cookiecutter template
+                "${workspaceFolder}/kis_templates/kis_lib_template",
                 "--no-input",
-                "module_name=${input:module_name}",
+                "package_name=${input:package_name}",
                 "library_type=Library",
                 "-o${workspaceFolder}/kis_packages"
             ],
@@ -25,8 +42,24 @@
             "args": [
                 "${workspaceFolder}/kis_templates/kis_lib_template",
                 "--no-input",
-                "module_name=${input:module_name}",
+                "package_name=${input:package_name}",
                 "library_type=Interface",
+                "-o${workspaceFolder}/kis_packages"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "kickstart a new kis_asset_package",
+            "type": "shell",
+            "command": "cookiecutter",
+            "args": [
+                "${workspaceFolder}/kis_templates/kis_asset_package",
+                "--no-input",
+                "package_name=${input:package_name}",
                 "-o${workspaceFolder}/kis_packages"
             ],
             "presentation": {
@@ -38,8 +71,8 @@
     ],
     "inputs": [
         {
-            "id": "module_name",
-            "description": "Enter the name of the new package name without kis_",
+            "id": "package_name",
+            "description": "Enter the name of the new package without kis_",
             "type": "promptString",
             "default": "my_package"
         }
