@@ -1,4 +1,4 @@
-# kis_packages/kis_basic_library/CMakeLists.txt
+# CMakeLists.txt
 
 cmake_minimum_required(VERSION 3.20)
 
@@ -10,24 +10,25 @@ include(kis.package.cmake)
 project(${PACKAGE_NAME} VERSION ${PACKAGE_VERSION})
 
 # --- 3. Define Library Target ---
+{% if cookiecutter.library_type == 'Library' -%}
+# A regular library has source files.
 add_library(${PACKAGE_NAME} main/src/${PACKAGE_NAME}.cpp)
+{% else -%}
+# An INTERFACE library is header-only and has no source files.
+add_library(${PACKAGE_NAME} INTERFACE)
+{% endif -%}
 add_library(kis::${PACKAGE_NAME} ALIAS ${PACKAGE_NAME})
 
-target_include_directories(${PACKAGE_NAME} PUBLIC
+target_include_directories(${PACKAGE_NAME} 
+{%- if cookiecutter.library_type == 'Library' %} PUBLIC{% else %} INTERFACE{% endif %}
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/main/include>
     $<INSTALL_INTERFACE:include>
 )
 
-# --- 4. Apply Compiler Presets (Universal and Definitive Fix) ---
+# --- 4. Apply Compiler Presets (Universal) ---
 if(BUILDING_WITH_SUPERBUILD)
-    # --- THIS IS THE FIX ---
-    # Instead of creating a link dependency that confuses the install() command,
-    # we call a helper function that directly copies the build settings.
-    # This creates no link and therefore no export dependency.
     kis_apply_sdk_build_settings_to_target(${PACKAGE_NAME})
 else()
-    # In a standalone build, we apply the preset logic directly to our own target.
-    message(STATUS "Applying standalone presets directly to ${PACKAGE_NAME}.")
     apply_kis_build_presets(${PACKAGE_NAME})
 endif()
 
@@ -44,7 +45,11 @@ if(NOT BUILDING_WITH_SUPERBUILD)
 endif()
 
 # --- 7. Install the Package (Universal) ---
+{% if cookiecutter.library_type == 'Library' -%}
 kis_install_package()
+{% else -%}
+kis_install_interface_package()
+{% endif -%}
 
 # --- 8. Add Optional Components ---
 if(KIS_BUILD_TESTS OR KIS_BUILD_SAMPLES OR KIS_BUILD_BENCHMARKS)

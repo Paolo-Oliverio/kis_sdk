@@ -4,8 +4,44 @@
         {
             "label": "kickstart a new kis_package library",
             "type": "shell",
-            "command": "cookiecutter ${workspaceFolder}/kis_templates/kis_lib_template -o ${workspaceFolder}/kis_packages",
+            "command": "cookiecutter",
+            "args": [
+                "${workspaceFolder}/kis_templates/kis_lib_template", // Path to your cookiecutter template
+                "--no-input",
+                "module_name=${input:module_name}",
+                "library_type=Library",
+                "-o${workspaceFolder}/kis_packages"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
             "problemMatcher": []
+        },
+        {
+            "label": "kickstart a new kis_package interface",
+            "type": "shell",
+            "command": "cookiecutter",
+            "args": [
+                "${workspaceFolder}/kis_templates/kis_lib_template",
+                "--no-input",
+                "module_name=${input:module_name}",
+                "library_type=Interface",
+                "-o${workspaceFolder}/kis_packages"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "module_name",
+            "description": "Enter the name of the new package name without kis_",
+            "type": "promptString",
+            "default": "my_package"
         }
     ]
 }
