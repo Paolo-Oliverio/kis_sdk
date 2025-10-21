@@ -7,10 +7,15 @@ if(KIS_BUILD_TESTS)
         GIT_REPOSITORY https://github.com/doctest/doctest.git
         GIT_TAG        ${KIS_THIRDPARTY_DOCTEST_VERSION}
     )
+
+    # Glob sources for tests (CMAKE_CURRENT_SOURCE_DIR is already the 'secondary' folder)
+    file(GLOB_RECURSE TEST_SOURCES
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp"
+    )
     
     kis_add_test(${PACKAGE_NAME}_tests
         SOURCES
-            tests/{{cookiecutter.package_name}}.test.cpp
+            ${TEST_SOURCES}
         LINK_LIBRARIES
             # Link to our main library target
             kis::${PACKAGE_NAME}

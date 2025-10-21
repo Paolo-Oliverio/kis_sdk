@@ -42,7 +42,8 @@ set(_KIS_CONFIG_ABI_GROUP_ "RELEASE")  # Default
 # Determines which variant to use for a given package based on:
 # 1. Package-specific override (KIS_SDK_VARIANT_<package_name>)
 # 2. Global default (KIS_SDK_DEFAULT_VARIANT)
-# 3. Fallback to "release"
+# 3. Consumer's CMAKE_BUILD_TYPE
+# 4. Fallback to "release"
 #
 # Args:
 #   package_name: Name of the package (e.g., "kis_core")
@@ -55,8 +56,23 @@ function(kis_sdk_select_variant package_name out_variant)
     # 2. Use default variant
     elseif(DEFINED KIS_SDK_DEFAULT_VARIANT)
         set(selected "${KIS_SDK_DEFAULT_VARIANT}")
+    # 3. Infer from consumer's CMAKE_BUILD_TYPE
+    elseif(DEFINED CMAKE_BUILD_TYPE AND CMAKE_BUILD_TYPE)
+        string(TOLOWER "${CMAKE_BUILD_TYPE}" build_type_lower)
+        if(build_type_lower STREQUAL "debug")
+            set(selected "debug")
+        elseif(build_type_lower STREQUAL "release")
+            set(selected "release")
+        elseif(build_type_lower STREQUAL "relwithdebinfo")
+            set(selected "release")  # RelWithDebInfo is ABI-compatible with Release
+        elseif(build_type_lower STREQUAL "minsizerel")
+            set(selected "release")  # MinSizeRel is ABI-compatible with Release
+        else()
+            # Unknown build type, default to release
+            set(selected "release")
+        endif()
     else()
-        # 3. Fallback to 'release'
+        # 4. Fallback to 'release'
         set(selected "release")
     endif()
     

@@ -37,6 +37,61 @@ else()
     set(_consumer_arch "${CMAKE_SYSTEM_PROCESSOR}")
 endif()
 
+# --- 3.5. Add Platform/ABI-Specific CMake Directories to Search Path ---
+# Third-party dependencies (like GLFW) are installed in platform/ABI-specific directories.
+# We need to add these to CMAKE_PREFIX_PATH so find_dependency() calls can locate them.
+set(_consumer_platform_id "${_consumer_platform}-${_consumer_arch}")
+
+# Add both ABI-invariant and ABI-specific paths to support both types of third-party deps
+set(_third_party_cmake_paths "")
+
+# Determine the consumer's build type suffix
+set(_consumer_suffix "")
+if(CMAKE_BUILD_TYPE)
+    string(TOLOWER "${CMAKE_BUILD_TYPE}" _build_type_lower)
+    if(_build_type_lower STREQUAL "debug")
+        set(_consumer_suffix "-debug")
+    elseif(_build_type_lower STREQUAL "release")
+        set(_consumer_suffix "-release")
+    elseif(_build_type_lower STREQUAL "relwithdebinfo")
+        set(_consumer_suffix "-relwithdebinfo")
+    elseif(_build_type_lower STREQUAL "minsizerel")
+        set(_consumer_suffix "-minsizerel")
+    endif()
+endif()
+
+# Priority 1: Add the consumer's exact build type path (highest priority)
+if(_consumer_suffix)
+    set(_abi_specific_cmake_path "${PACKAGE_PREFIX_DIR}/lib/${_consumer_platform_id}${_consumer_suffix}/cmake")
+    if(IS_DIRECTORY "${_abi_specific_cmake_path}")
+        list(APPEND _third_party_cmake_paths "${_abi_specific_cmake_path}")
+    endif()
+endif()
+
+# Priority 2: Add ABI-invariant path (e.g., lib/windows-x64/cmake for release builds)
+# This is used by third-party deps that don't differentiate between debug/release
+set(_abi_invariant_cmake_path "${PACKAGE_PREFIX_DIR}/lib/${_consumer_platform_id}/cmake")
+if(IS_DIRECTORY "${_abi_invariant_cmake_path}")
+    list(APPEND _third_party_cmake_paths "${_abi_invariant_cmake_path}")
+endif()
+
+# Priority 3: Add all other ABI-specific paths as fallbacks
+# This ensures compatibility even if the consumer's build type doesn't exactly match
+foreach(_suffix IN ITEMS "-debug" "-release" "-relwithdebinfo" "-minsizerel" "-profiling")
+    if(NOT _suffix STREQUAL _consumer_suffix)
+        set(_fallback_cmake_path "${PACKAGE_PREFIX_DIR}/lib/${_consumer_platform_id}${_suffix}/cmake")
+        if(IS_DIRECTORY "${_fallback_cmake_path}")
+            list(APPEND _third_party_cmake_paths "${_fallback_cmake_path}")
+        endif()
+    endif()
+endforeach()
+
+# Prepend these paths to CMAKE_PREFIX_PATH so find_dependency() can locate third-party configs
+if(_third_party_cmake_paths)
+    list(PREPEND CMAKE_PREFIX_PATH ${_third_party_cmake_paths})
+    message(STATUS "  --> Third-party CMake search paths: ${_third_party_cmake_paths}")
+endif()
+
 # --- 4. Re-create the Platform Tag Hierarchy ---
 set(_consumer_tags "")
 if(_consumer_platform STREQUAL "windows")
