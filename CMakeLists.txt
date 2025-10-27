@@ -1,6 +1,6 @@
 # CMakeLists.txt (Root Superbuild)
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.22)
 
 set(CMAKE_PROJECT_TOP_LEVEL_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/kis_build_system/modules/env_setup.cmake")
 
@@ -14,28 +14,21 @@ include(CTest)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/kis_build_system/modules")
 
-include(kis_state)
+# Load the CORE build engine.
 include(kis_build_system)
-include(platform_setup)
-include(paths)
-include(build_summary)
-include(diagnostics)
-include(compiler_cache)
-include(dependency_graph)
-include(build_profiling)
-include(file_utils)
-include(incremental_validation)
-include(incremental_dependencies)
 
+# Load SUPERBUILD-SPECIFIC modules.
+include(platform_setup)
+include(dependency_resolution)
+
+# Initialize state and load SDK options
 kis_state_init()
 setup_sdk_paths()
-kis_profile_init()
 kis_init_validation_stats()
 kis_setup_compiler_cache()
-
 include(sdk_options)
 include(sdk_presets)
-include(parallel_fetch)
+kis_profile_init()
 
 if(KIS_DIAGNOSTIC_MODE)
     kis_dump_cache_variables()
@@ -43,17 +36,9 @@ endif()
 kis_check_cache_staleness()
 kis_validate_environment()
 
-add_subdirectory(kis_build_system)
-
 # --- 2. Initialize Superbuild State ---
 
 set(BUILDING_WITH_SUPERBUILD TRUE CACHE INTERNAL "Flag for internal modules")
-
-# User-defined overrides are handled separately before discovery
-set(KIS_DEPENDENCY_OVERRIDES "" CACHE STRING "List of 'original;override' pairs.")
-_kis_get_override_map()
-set(base_override_keys ${map_keys})
-set(base_override_values ${map_values})
 
 # --- 3. Define Meta-Targets ---
 if(KIS_BUILD_TESTS)
@@ -67,6 +52,9 @@ if(KIS_BUILD_BENCHMARKS)
   add_custom_target(all_benchmarks)
 endif()
 
+# Add the build system itself (after KIS_BUILD_TESTS is defined)
+add_subdirectory(kis_build_system)
+
 # --- 4. Discover, Configure, Populate, and Link Packages ---
 
 if(KIS_SDK_RESOLVE_PACKAGES)
@@ -77,26 +65,27 @@ message(STATUS "\n--- PHASE 1: PRE-SCAN FOR CUSTOM VARIANTS ---")
 kis_prescan_custom_variants()
 
 message(STATUS "\n--- PHASE 2: DISCOVERING AND CONFIGURING PACKAGES ---")
-# Simplified call: No more output variables to manage. Results are in the state module.
 discover_and_map_packages()
-
-# Combine platform overrides (from state) with user overrides (from cache)
-kis_state_get_override_map(platform_override_keys platform_override_values)
-list(APPEND platform_override_keys ${base_override_keys})
-list(APPEND platform_override_values ${base_override_values})
-# Write the final, combined map back to the state for other modules to use
-kis_state_set_override_map("${platform_override_keys}" "${platform_override_values}")
-
-# Get the list of packages from the state for the next steps
 kis_state_get_all_package_paths(SDK_PACKAGES)
-
 configure_discovered_packages(${SDK_PACKAGES})
 
 message(STATUS "\n--- PHASE 3: POPULATING THIRD-PARTY DEPENDENCIES ---")
 kis_populate_declared_dependencies()
 
 message(STATUS "\n--- PHASE 4: LINKING ALL PACKAGE DEPENDENCIES ---")
-link_all_package_dependencies(${SDK_PACKAGES})
+
+# Step 4a: Resolve ALL deferred links from ALL targets (packages, tests, etc.) at once.
+kis_resolve_and_correct_all_links()
+
+# Step 4b: Execute the corrected link commands for each target that requested them.
+kis_state_get_deferred_link_targets(targets_to_link)
+foreach(target_name ${targets_to_link})
+    if(TARGET ${target_name})
+        kis_execute_deferred_links(${target_name})
+    else()
+        kis_message_verbose("Skipping links for '${target_name}' (target was not created, likely skipped)")
+    endif()
+endforeach()
 
 message(STATUS "\n--- PHASE 5: CONFIGURING THIRD-PARTY DEPENDENCY INSTALLATION ---")
 kis_install_third_party_dependencies()
@@ -124,10 +113,3 @@ add_custom_target(kis_sdk_info
     COMMENT "Displays a summary of the configured build system state."
     VERBATIM
 )
-
-if(PROJECT_IS_TOP_LEVEL)
-    option(KIS_BUILD_SYSTEM_TESTS "Build the tests for the build system itself" ON)
-    if(KIS_BUILD_SYSTEM_TESTS)
-        add_subdirectory(tests EXCLUDE_FROM_ALL)
-    endif()
-endif()

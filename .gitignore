@@ -1,5 +1,6 @@
 kis_packages/*
 !kis_packages/.gitkeep
+/unused
 /build
 /tools
 /ref

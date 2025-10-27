@@ -1,0 +1,10 @@
+{
+  "json.schemas": [
+  {
+    "fileMatch": [
+      "**/kis.package.json"
+    ],
+    "url": "./kis_build_system/kis.package.schema.json" // Path relative to your workspace root
+  }
+]
+}
