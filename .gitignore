@@ -2,6 +2,7 @@ kis_packages/*
 !kis_packages/.gitkeep
 /unused
 /build
-/tools
+/tests/build
+/tools/cmake_dumps
 /ref
 /_install
