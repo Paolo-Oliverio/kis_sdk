@@ -26,7 +26,7 @@ endif()
 # automatically links dependencies declared for the "main" scope.
 kis_define_package(
     SOURCES
-        main/src/{{cookiecutter.package_name}}.cpp
+        main/src/kis_{{cookiecutter.package_name}}.cpp
 )
 
 {% elif cookiecutter.library_type == "Interface" %}
