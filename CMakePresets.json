@@ -9,7 +9,8 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_CXX_COMPILER": "clang++"
       }
     },
     {
@@ -33,7 +34,9 @@
         "KIS_CONFIG_SUFFIX": "debug",
         "KIS_BUILD_TOOLS": "ON",
         "KIS_BUILD_EDITOR": "ON",
-        "KIS_BUILD_TESTS": "ON"
+        "KIS_BUILD_TESTS": "ON",
+        "CMAKE_CXX_FLAGS": "-fno-omit-frame-pointer -O1",
+        "CMAKE_C_FLAGS": "-fno-omit-frame-pointer -O1"
       }
     },
     {
@@ -59,6 +62,18 @@
         "CMAKE_C_FLAGS": "-fsanitize=address -fno-omit-frame-pointer"
       }
     }
+     ,
+     {
+       "name": "tsan",
+       "displayName": "ThreadSanitizer",
+       "description": "Debug with ThreadSanitizer for thread error detection",
+       "inherits": "debug",
+       "cacheVariables": {
+    "KIS_CONFIG_SUFFIX": "tsan",
+    "CMAKE_CXX_FLAGS": "-fsanitize=thread -fno-omit-frame-pointer -O1",
+    "CMAKE_C_FLAGS": "-fsanitize=thread -fno-omit-frame-pointer -O1"
+       }
+     }
   ],
   "buildPresets": [
     {
@@ -87,6 +102,13 @@
       "configuration": "Release",
       "targets": [ "install" ]
     }
+     ,
+     {
+       "name": "tsan",
+       "displayName": "ThreadSanitizer Build",
+       "configurePreset": "tsan",
+       "configuration" : "Debug"
+     }
   ],
   "testPresets": [
     {
@@ -103,5 +125,13 @@
       "configuration": "Debug",
       "output": { "outputOnFailure": true }
     }
+     ,
+     {
+       "name": "tsanTest",
+       "displayName": "Test (ThreadSanitizer)",
+       "configurePreset": "tsan",
+       "configuration": "Debug",
+       "output": { "outputOnFailure": true }
+     }
   ]
 }

@@ -8,7 +8,7 @@ project(kis_sdk)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_INSTALL_MESSAGE LAZY)
-include(CTest)
+#include(CTest)
 
 # --- 1. Load Build System & Configure SDK ---
 
